@@ -3,7 +3,7 @@ import { useUser } from '@clerk/clerk-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { fetchDeadlines } from '../api/deadlineApi'
 
-const BASE_URL = 'http://localhost:5001/api'
+const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001/api'
 
 const MOODS = [
   { id: 'great', emoji: '🤩', label: 'Great', color: 'border-green-500 bg-green-950', text: 'text-green-400', bar: 'bg-green-500' },

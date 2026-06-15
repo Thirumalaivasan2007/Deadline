@@ -3,7 +3,7 @@ import { useUser } from '@clerk/clerk-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { fetchDeadlines } from '../api/deadlineApi'
 
-const BASE_URL = 'http://localhost:5001/api'
+const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001/api'
 
 export default function StudyBuddy() {
   const { user } = useUser()
