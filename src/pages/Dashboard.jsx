@@ -8,7 +8,10 @@ import { requestNotificationPermission, scheduleDeadlineNotifications } from '..
 import DeathScreen from '../components/DeathScreen'
 
 function getPanicLevel(dueDate) {
-  const diff = new Date(dueDate) - Date.now()
+  if (!dueDate) return 'calm'
+  const time = new Date(dueDate).getTime()
+  if (isNaN(time)) return 'calm'
+  const diff = time - Date.now()
   const hours = diff / (1000 * 60 * 60)
   if (hours <= 0) return 'expired'
   if (hours <= 2) return 'critical'
@@ -18,7 +21,10 @@ function getPanicLevel(dueDate) {
 }
 
 function formatCountdown(dueDate) {
-  const diff = new Date(dueDate) - Date.now()
+  if (!dueDate) return '--'
+  const time = new Date(dueDate).getTime()
+  if (isNaN(time)) return '--'
+  const diff = time - Date.now()
   if (diff <= 0) return '💀 EXPIRED'
   const h = Math.floor(diff / (1000 * 60 * 60))
   const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
@@ -337,7 +343,11 @@ function PanicMeter({ deadlines }) {
 }
 
 function TodayFocus({ deadlines }) {
-  const active = deadlines.filter(d => getPanicLevel(d.dueDate) !== 'expired')
+  const active = deadlines.filter(d => {
+    if (!d?.dueDate) return false
+    const time = new Date(d.dueDate).getTime()
+    return !isNaN(time) && getPanicLevel(d.dueDate) !== 'expired'
+  })
   if (active.length === 0) return (
     <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
       <h2 className="text-white font-bold text-lg mb-2">🎯 Today's Focus</h2>
@@ -345,7 +355,7 @@ function TodayFocus({ deadlines }) {
     </div>
   )
 
-  const sorted = [...active].sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate))
+  const sorted = [...active].sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())
   const focus = sorted[0]
 
   return (
@@ -356,7 +366,7 @@ function TodayFocus({ deadlines }) {
         <h3 className="text-red-400 font-black text-xl">{focus.title}</h3>
         <p className="text-gray-400 text-sm">{focus.subject}</p>
         <p className="text-red-300 text-xs mt-2 font-mono">
-          Due: {new Date(focus.dueDate).toLocaleString()}
+          Due: {focus.dueDate && !isNaN(new Date(focus.dueDate).getTime()) ? new Date(focus.dueDate).toLocaleString() : 'No date set'}
         </p>
       </div>
     </div>
@@ -404,22 +414,28 @@ export default function Dashboard() {
   }
 
   const handleDelete = async (id) => {
-    await deleteDeadline(id)
+    await deleteDeadline(id, user?.id)
     setDeadlines(prev => prev.filter(d => d._id !== id))
   }
 
   const handleUpdate = async (id, data) => {
-    const updated = await updateDeadline(id, data)
-    setDeadlines(prev => prev.map(d => d._id === id ? updated : d))
+    setDeadlines(prev => prev.map(d => d._id === id ? { ...d, ...data } : d))
+    const updated = await updateDeadline(id, data, user?.id)
+    if (updated) {
+      setDeadlines(prev => prev.map(d => d._id === id ? { ...d, ...updated } : d))
+    }
   }
 
   const handleProgressUpdate = async (id, progress) => {
-    const updated = await updateProgress(id, progress)
-    setDeadlines(prev => prev.map(d => d._id === id ? updated : d))
+    setDeadlines(prev => prev.map(d => d._id === id ? { ...d, progress } : d))
+    const updated = await updateProgress(id, progress, user?.id)
+    if (updated) {
+      setDeadlines(prev => prev.map(d => d._id === id ? { ...d, ...updated } : d))
+    }
   }
 
   const handleSubmit = async (id, isOnTime) => {
-    await deleteDeadline(id)
+    await deleteDeadline(id, user?.id)
     const stats = await submitDeadline(user.id, isOnTime)
     setDeadlines(prev => prev.filter(d => d._id !== id))
     setUserStats(stats)

@@ -7,7 +7,10 @@ const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
 function getPanicLevel(dueDate) {
-  const diff = new Date(dueDate) - Date.now()
+  if (!dueDate) return 'calm'
+  const time = new Date(dueDate).getTime()
+  if (isNaN(time)) return 'calm'
+  const diff = time - Date.now()
   const hours = diff / (1000 * 60 * 60)
   if (hours <= 0) return 'expired'
   if (hours <= 2) return 'critical'

@@ -13,10 +13,26 @@ export const getLocalDeadlines = (userId) => {
   if (!userId) return []
   try {
     const raw = localStorage.getItem(`${STORAGE_KEY_PREFIX}${userId}`)
-    return raw ? JSON.parse(raw) : []
+    if (!raw) return []
+    const parsed = JSON.parse(raw)
+    if (Array.isArray(parsed)) {
+      return parsed
+        .filter(d => d && d._id)
+        .map(d => ({
+          title: d.title || 'My Deadline',
+          subject: d.subject || 'General',
+          dueDate: (d.dueDate && !isNaN(new Date(d.dueDate).getTime()))
+            ? d.dueDate
+            : new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+          priority: d.priority || 'high',
+          progress: typeof d.progress === 'number' ? d.progress : 0,
+          ...d
+        }))
+    }
   } catch {
     return []
   }
+  return []
 }
 
 export const saveLocalDeadlines = (userId, deadlines) => {
@@ -124,6 +140,16 @@ export const addDeadline = async (deadline) => {
 }
 
 export const updateDeadline = async (id, data, userId) => {
+  let existing = null
+  if (userId) {
+    const current = getLocalDeadlines(userId)
+    existing = current.find(d => d._id === id)
+    if (existing) {
+      const merged = { ...existing, ...data }
+      saveLocalDeadlines(userId, current.map(d => d._id === id ? merged : d))
+    }
+  }
+
   try {
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(), 6000)
@@ -139,22 +165,19 @@ export const updateDeadline = async (id, data, userId) => {
       const contentType = res.headers.get('content-type') || ''
       if (contentType.includes('application/json')) {
         const updated = await res.json()
+        const merged = existing ? { ...existing, ...updated, ...data } : { _id: id, ...data, ...updated }
         if (userId) {
           const current = getLocalDeadlines(userId)
-          saveLocalDeadlines(userId, current.map(d => d._id === id ? { ...d, ...updated } : d))
+          saveLocalDeadlines(userId, current.map(d => d._id === id ? merged : d))
         }
-        return updated
+        return merged
       }
     }
   } catch (err) {
     console.warn('Backend API unavailable, updating deadline locally:', err?.message || err)
   }
 
-  if (userId) {
-    const current = getLocalDeadlines(userId)
-    saveLocalDeadlines(userId, current.map(d => d._id === id ? { ...d, ...data } : d))
-  }
-  return { _id: id, ...data }
+  return existing ? { ...existing, ...data } : { _id: id, ...data }
 }
 
 export const deleteDeadline = async (id, userId) => {
@@ -278,6 +301,16 @@ export const getRoast = async (deadlines) => {
 }
 
 export const updateProgress = async (id, progress, userId) => {
+  let existing = null
+  if (userId) {
+    const current = getLocalDeadlines(userId)
+    existing = current.find(d => d._id === id)
+    if (existing) {
+      const merged = { ...existing, progress }
+      saveLocalDeadlines(userId, current.map(d => d._id === id ? merged : d))
+    }
+  }
+
   try {
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(), 6000)
@@ -293,20 +326,17 @@ export const updateProgress = async (id, progress, userId) => {
       const contentType = res.headers.get('content-type') || ''
       if (contentType.includes('application/json')) {
         const updated = await res.json()
+        const merged = existing ? { ...existing, ...updated, progress } : { _id: id, progress, ...updated }
         if (userId) {
           const current = getLocalDeadlines(userId)
-          saveLocalDeadlines(userId, current.map(d => d._id === id ? { ...d, progress } : d))
+          saveLocalDeadlines(userId, current.map(d => d._id === id ? merged : d))
         }
-        return updated
+        return merged
       }
     }
   } catch (err) {
     console.warn('Backend API unavailable, updating progress locally:', err?.message || err)
   }
 
-  if (userId) {
-    const current = getLocalDeadlines(userId)
-    saveLocalDeadlines(userId, current.map(d => d._id === id ? { ...d, progress } : d))
-  }
-  return { _id: id, progress }
+  return existing ? { ...existing, progress } : { _id: id, progress }
 }

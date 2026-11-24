@@ -10,7 +10,10 @@ function formatTime(seconds) {
 }
 
 function formatCountdown(dueDate) {
-  const diff = new Date(dueDate) - Date.now()
+  if (!dueDate) return '--'
+  const time = new Date(dueDate).getTime()
+  if (isNaN(time)) return '--'
+  const diff = time - Date.now()
   if (diff <= 0) return '💀 EXPIRED'
   const h = Math.floor(diff / (1000 * 60 * 60))
   const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
