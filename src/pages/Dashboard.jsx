@@ -1,4 +1,4 @@
-import { UserButton, useUser } from '@clerk/clerk-react'
+import { useUser } from '@clerk/clerk-react'
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import AddDeadlineModal from '../components/AddDeadlineModal'
@@ -77,7 +77,7 @@ function AIRoast({ deadlines }) {
       ? Math.round(deadlines.reduce((a, b) => a + b.progress, 0) / deadlines.length)
       : 0
 
-    let pool = []
+    let pool
 
     if (deadlines.length === 0) {
       pool = roasts.noDeadlines
@@ -134,7 +134,6 @@ function StreakCard({ stats }) {
   const level = stats?.level || 1
   const xp = stats?.xp || 0
   const streak = stats?.streak || 0
-  const nextLevelXP = level * 200
   const xpProgress = (xp % 200) / 200 * 100
 
   return (
@@ -175,8 +174,14 @@ function StreakCard({ stats }) {
 function PanicCard({ deadline, onDelete, onEdit, onSubmit, onProgressUpdate }) {
   const [countdown, setCountdown] = useState(formatCountdown(deadline.dueDate))
   const [localProgress, setLocalProgress] = useState(deadline.progress)
+  const [prevProgress, setPrevProgress] = useState(deadline.progress)
   const [saving, setSaving] = useState(false)
   const panic = getPanicLevel(deadline.dueDate)
+
+  if (deadline.progress !== prevProgress) {
+    setPrevProgress(deadline.progress)
+    setLocalProgress(deadline.progress)
+  }
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -184,10 +189,6 @@ function PanicCard({ deadline, onDelete, onEdit, onSubmit, onProgressUpdate }) {
     }, 1000)
     return () => clearInterval(interval)
   }, [deadline.dueDate])
-
-  useEffect(() => {
-    setLocalProgress(deadline.progress)
-  }, [deadline.progress])
 
   const handleProgressChange = async (val) => {
     setLocalProgress(val)

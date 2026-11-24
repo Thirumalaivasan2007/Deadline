@@ -12,18 +12,20 @@ const DEATH_MESSAGES = [
 
 export default function DeathScreen({ deadlines, onDismiss }) {
   const [msgIndex, setMsgIndex] = useState(0)
-
-  const expiredDeadlines = deadlines.filter(d => {
-    const diff = new Date(d.dueDate) - Date.now()
-    return diff <= 0 && d.progress < 100
-  })
+  const [now, setNow] = useState(() => Date.now())
 
   useEffect(() => {
     const interval = setInterval(() => {
+      setNow(Date.now())
       setMsgIndex(prev => (prev + 1) % DEATH_MESSAGES.length)
     }, 3000)
     return () => clearInterval(interval)
   }, [])
+
+  const expiredDeadlines = deadlines.filter(d => {
+    const diff = new Date(d.dueDate).getTime() - now
+    return diff <= 0 && d.progress < 100
+  })
 
   if (expiredDeadlines.length === 0) return null
 

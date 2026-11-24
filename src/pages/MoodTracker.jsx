@@ -1,9 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useUser } from '@clerk/clerk-react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { fetchDeadlines } from '../api/deadlineApi'
-
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001/api'
+import { fetchDeadlines, BASE_URL } from '../api/deadlineApi'
 
 const MOODS = [
   { id: 'great', emoji: '🤩', label: 'Great', color: 'border-green-500 bg-green-950', text: 'text-green-400', bar: 'bg-green-500' },
@@ -21,34 +19,64 @@ const MOOD_NOTES = {
   dead: ["Bro... sleep pottuta ezhunthu pannu 😂", "Dead inside but still here - respect da 💀"],
 }
 
+function getRandomMoodNote(moodId) {
+  const notes = MOOD_NOTES[moodId]
+  if (!notes || notes.length === 0) return ''
+  return notes[Math.floor(Math.random() * notes.length)]
+}
+
 export default function MoodTracker() {
   const { user } = useUser()
   const [todayMood, setTodayMood] = useState(null)
+  const [moodNote, setMoodNote] = useState('')
   const [moodHistory, setMoodHistory] = useState([])
   const [deadlines, setDeadlines] = useState([])
   const [note, setNote] = useState('')
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [now] = useState(() => Date.now())
+
+  const handleMoodSelect = (moodId) => {
+    setTodayMood(moodId)
+    setMoodNote(getRandomMoodNote(moodId))
+  }
 
   useEffect(() => {
-    if (user) {
-      Promise.all([
-        fetch(`${BASE_URL}/mood/${user.id}`).then(r => r.json()),
-        fetchDeadlines(user.id)
-      ]).then(([moodData, deadlineData]) => {
-        setMoodHistory(Array.isArray(moodData) ? moodData : [])
+    if (!user?.id) return
+    let isMounted = true
+    Promise.all([
+      fetch(`${BASE_URL}/mood/${user.id}`).then(r => r.json()).catch(() => []),
+      fetchDeadlines(user.id)
+    ]).then(([moodData, deadlineData]) => {
+      if (isMounted) {
+        const mList = Array.isArray(moodData) ? moodData : []
+        setMoodHistory(mList)
         setDeadlines(Array.isArray(deadlineData) ? deadlineData : [])
 
         // Check if today mood already logged
         const today = new Date().toISOString().split('T')[0]
-        const todayLog = moodData.find(m => m.date === today)
-        if (todayLog) setTodayMood(todayLog.mood)
-
-        setLoading(false)
-      }).catch(() => setLoading(false))
+        const todayLog = mList.find(m => m.date === today)
+        if (todayLog) {
+          setTodayMood(todayLog.mood)
+          if (MOOD_NOTES[todayLog.mood]) {
+            const notes = MOOD_NOTES[todayLog.mood]
+            setMoodNote(notes[Math.floor(Math.random() * notes.length)])
+          }
+        }
+      }
+    }).catch(() => {})
+      .finally(() => {
+        if (isMounted) setLoading(false)
+      })
+    return () => {
+      isMounted = false
     }
-  }, [user])
+  }, [user?.id])
+
+  const activeDeadlines = useMemo(() => {
+    return deadlines.filter(d => new Date(d.dueDate).getTime() > now)
+  }, [deadlines, now])
 
   const saveMood = async () => {
     if (!todayMood) return
@@ -135,7 +163,7 @@ export default function MoodTracker() {
                   key={mood.id}
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
-                  onClick={() => setTodayMood(mood.id)}
+                  onClick={() => handleMoodSelect(mood.id)}
                   className={`border-2 rounded-2xl p-4 text-center transition-all ${
                     todayMood === mood.id
                       ? mood.color
@@ -161,7 +189,7 @@ export default function MoodTracker() {
                   className={`border ${selectedMoodData.color} rounded-xl p-4 mb-4`}
                 >
                   <p className={`${selectedMoodData.text} font-semibold text-sm`}>
-                    {MOOD_NOTES[todayMood][Math.floor(Math.random() * MOOD_NOTES[todayMood].length)]}
+                    {moodNote}
                   </p>
                 </motion.div>
               )}
@@ -289,12 +317,11 @@ export default function MoodTracker() {
           {/* Today's Deadlines */}
           <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5">
             <h3 className="text-white font-bold mb-3">📋 Active Deadlines</h3>
-            {deadlines.filter(d => new Date(d.dueDate) > Date.now()).length === 0 ? (
+            {activeDeadlines.length === 0 ? (
               <p className="text-gray-500 text-sm">No active deadlines! 😌</p>
             ) : (
               <div className="space-y-2">
-                {deadlines
-                  .filter(d => new Date(d.dueDate) > Date.now())
+                {activeDeadlines
                   .slice(0, 3)
                   .map((d, i) => (
                     <div key={i} className="flex justify-between items-center bg-black rounded-lg p-2">

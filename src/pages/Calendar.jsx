@@ -41,13 +41,26 @@ export default function Calendar() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (user) {
-      fetchDeadlines(user.id).then(data => {
-        setDeadlines(Array.isArray(data) ? data : [])
-        setLoading(false)
+    if (!user?.id) return
+    let isMounted = true
+    fetchDeadlines(user.id)
+      .then(data => {
+        if (isMounted) {
+          setDeadlines(Array.isArray(data) ? data : [])
+        }
       })
+      .catch(err => {
+        console.error('Failed to load deadlines:', err)
+      })
+      .finally(() => {
+        if (isMounted) {
+          setLoading(false)
+        }
+      })
+    return () => {
+      isMounted = false
     }
-  }, [user])
+  }, [user?.id])
 
   const year = currentDate.getFullYear()
   const month = currentDate.getMonth()

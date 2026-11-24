@@ -18,11 +18,8 @@ const navItems = [
   { path: '/settings', icon: '⚙️', label: 'Settings' },
 ]
 
-export default function Sidebar() {
-  const { user } = useUser()
-  const [mobileOpen, setMobileOpen] = useState(false)
-
-  const SidebarContent = () => (
+function SidebarContent({ user, onClose }) {
+  return (
     <>
       {/* Logo */}
       <div className="px-6 py-6 border-b border-gray-800 flex justify-between items-center">
@@ -32,12 +29,14 @@ export default function Sidebar() {
           </h1>
           <p className="text-gray-600 text-xs mt-1">Don't miss it. Or else.</p>
         </div>
-        <button 
-          onClick={() => setMobileOpen(false)}
-          className="md:hidden text-gray-500 hover:text-white text-2xl p-2"
-        >
-          ✕
-        </button>
+        {onClose && (
+          <button 
+            onClick={onClose}
+            className="md:hidden text-gray-500 hover:text-white text-2xl p-2"
+          >
+            ✕
+          </button>
+        )}
       </div>
 
       {/* Nav Items */}
@@ -46,7 +45,7 @@ export default function Sidebar() {
           <NavLink
             key={item.path}
             to={item.path}
-            onClick={() => setMobileOpen(false)}
+            onClick={onClose}
             className={({ isActive }) =>
               `flex items-center gap-3 px-4 py-3 rounded-xl font-semibold transition-all duration-200 ${
                 isActive
@@ -64,7 +63,7 @@ export default function Sidebar() {
       {/* User Profile Bottom */}
       <div className="px-4 py-4 border-t border-gray-800">
         <div className="flex items-center gap-3 px-3 py-3 rounded-xl bg-gray-900">
-          <UserButton afterSignOutUrl="/" />
+          <UserButton />
           <div className="flex-1 min-w-0">
             <p className="text-white text-sm font-semibold truncate">{user?.firstName} {user?.lastName}</p>
             <p className="text-gray-500 text-xs truncate">{user?.primaryEmailAddress?.emailAddress}</p>
@@ -74,6 +73,11 @@ export default function Sidebar() {
       </div>
     </>
   )
+}
+
+export default function Sidebar() {
+  const { user } = useUser()
+  const [mobileOpen, setMobileOpen] = useState(false)
 
   return (
     <>
@@ -83,7 +87,7 @@ export default function Sidebar() {
         animate={{ x: 0, opacity: 1 }}
         className="hidden md:flex fixed left-0 top-0 h-full w-64 bg-gray-950 border-r border-gray-800 z-20 flex-col"
       >
-        <SidebarContent />
+        <SidebarContent user={user} />
       </motion.div>
 
       {/* Mobile Top Bar */}
@@ -92,7 +96,7 @@ export default function Sidebar() {
           💀 Dead<span className="text-red-500">Line</span>
         </h1>
         <div className="flex items-center gap-3">
-          <UserButton afterSignOutUrl="/" />
+          <UserButton />
           <button
             onClick={() => setMobileOpen(!mobileOpen)}
             className="text-white text-2xl p-1"
@@ -123,7 +127,7 @@ export default function Sidebar() {
               transition={{ type: 'tween' }}
               className="md:hidden fixed left-0 top-0 h-full w-72 bg-gray-950 border-r border-gray-800 z-40 flex flex-col"
             >
-              <SidebarContent />
+              <SidebarContent user={user} onClose={() => setMobileOpen(false)} />
             </motion.div>
           </>
         )}

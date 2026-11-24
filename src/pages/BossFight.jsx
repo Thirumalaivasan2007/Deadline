@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useUser } from '@clerk/clerk-react'
-import { motion, AnimatePresence } from 'framer-motion'
-
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001/api'
+import { motion } from 'framer-motion'
+import { BASE_URL } from '../api/deadlineApi'
 
 export default function BossFight() {
   const { user } = useUser()
@@ -11,16 +10,23 @@ export default function BossFight() {
   const [submitting, setSubmitting] = useState(null)
 
   useEffect(() => {
-    if (user) {
-      fetch(`${BASE_URL}/bossfight/${user.id}`)
-        .then(r => r.json())
-        .then(data => {
+    if (!user?.id) return
+    let isMounted = true
+    fetch(`${BASE_URL}/bossfight/${user.id}`)
+      .then(r => r.json())
+      .then(data => {
+        if (isMounted) {
           setBossFights(Array.isArray(data) ? data : [])
-          setLoading(false)
-        })
-        .catch(() => setLoading(false))
+        }
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (isMounted) setLoading(false)
+      })
+    return () => {
+      isMounted = false
     }
-  }, [user])
+  }, [user?.id])
 
   const submitBoss = async (bossId) => {
     setSubmitting(bossId)

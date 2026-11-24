@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion'
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 
 export default function EditDeadlineModal({ isOpen, onClose, onUpdate, deadline }) {
   const [form, setForm] = useState({
@@ -10,20 +10,22 @@ export default function EditDeadlineModal({ isOpen, onClose, onUpdate, deadline 
     priority: 'medium',
     progress: 0
   })
+  const [currentId, setCurrentId] = useState(deadline?._id)
 
-  useEffect(() => {
+  if (deadline?._id !== currentId) {
+    setCurrentId(deadline?._id)
     if (deadline) {
       const date = new Date(deadline.dueDate)
       setForm({
-        title: deadline.title,
-        subject: deadline.subject,
+        title: deadline.title || '',
+        subject: deadline.subject || '',
         dueDate: date.toISOString().split('T')[0],
         dueTime: date.toTimeString().slice(0, 5),
-        priority: deadline.priority,
-        progress: deadline.progress
+        priority: deadline.priority || 'medium',
+        progress: deadline.progress || 0
       })
     }
-  }, [deadline])
+  }
 
   const handleSubmit = () => {
     if (!form.title || !form.subject || !form.dueDate || !form.dueTime) {

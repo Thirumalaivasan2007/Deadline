@@ -1,9 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useUser } from '@clerk/clerk-react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { fetchDeadlines } from '../api/deadlineApi'
-
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001/api'
+import { fetchDeadlines, BASE_URL } from '../api/deadlineApi'
 
 const EVENT_STYLES = {
   submitted: { bg: 'bg-green-950', border: 'border-green-800', text: 'text-green-400' },
@@ -28,23 +26,30 @@ export default function ShameFeed() {
   const [myStats, setMyStats] = useState(null)
 
   useEffect(() => {
-    if (user) {
-      Promise.all([
-        fetch(`${BASE_URL}/shamefeed`).then(r => r.json()),
-        fetch(`${BASE_URL}/wager/${user.id}`).then(r => r.json()),
-        fetchDeadlines(user.id),
-        fetch(`${BASE_URL}/user/${user.id}`).then(r => r.json())
-      ]).then(([feed, wagerData, deadlineData, stats]) => {
+    if (!user?.id) return
+    let isMounted = true
+    Promise.all([
+      fetch(`${BASE_URL}/shamefeed`).then(r => r.json()).catch(() => []),
+      fetch(`${BASE_URL}/wager/${user.id}`).then(r => r.json()).catch(() => []),
+      fetchDeadlines(user.id),
+      fetch(`${BASE_URL}/user/${user.id}`).then(r => r.json()).catch(() => null)
+    ]).then(([feed, wagerData, deadlineData, stats]) => {
+      if (isMounted) {
         setEvents(Array.isArray(feed) ? feed : [])
         setWagers(Array.isArray(wagerData) ? wagerData : [])
         setDeadlines(Array.isArray(deadlineData)
           ? deadlineData.filter(d => new Date(d.dueDate) > Date.now())
           : [])
         setMyStats(stats)
-        setLoading(false)
-      }).catch(() => setLoading(false))
+      }
+    }).catch(() => {})
+      .finally(() => {
+        if (isMounted) setLoading(false)
+      })
+    return () => {
+      isMounted = false
     }
-  }, [user])
+  }, [user?.id])
 
   // Auto refresh every 10 seconds
   useEffect(() => {

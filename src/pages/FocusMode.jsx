@@ -42,16 +42,26 @@ export default function FocusMode() {
   const sessionRef = useRef(null)
 
   useEffect(() => {
-    if (user) {
-      fetchDeadlines(user.id).then(data => {
-        const active = Array.isArray(data)
-          ? data.filter(d => new Date(d.dueDate) > Date.now())
-          : []
-        setDeadlines(active)
-        if (active.length > 0) setSelectedDeadline(active[0])
-      })
+    let isMounted = true
+    if (user?.id) {
+      fetchDeadlines(user.id)
+        .then(data => {
+          if (isMounted) {
+            const active = Array.isArray(data)
+              ? data.filter(d => new Date(d.dueDate) > Date.now())
+              : []
+            setDeadlines(active)
+            if (active.length > 0) setSelectedDeadline(active[0])
+          }
+        })
+        .catch(err => {
+          console.error('Failed to load deadlines in focus mode:', err)
+        })
     }
-  }, [user])
+    return () => {
+      isMounted = false
+    }
+  }, [user?.id])
 
   useEffect(() => {
     const interval = setInterval(() => {

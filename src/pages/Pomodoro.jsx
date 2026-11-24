@@ -14,11 +14,12 @@ export default function Pomodoro() {
   const [sessions, setSessions] = useState(0)
   const intervalRef = useRef(null)
 
-  useEffect(() => {
-    setTimeLeft(MODES[mode].time)
+  const selectMode = (newMode) => {
+    setMode(newMode)
+    setTimeLeft(MODES[newMode].time)
     setRunning(false)
-    clearInterval(intervalRef.current)
-  }, [mode])
+    if (intervalRef.current) clearInterval(intervalRef.current)
+  }
 
   useEffect(() => {
     if (running) {
@@ -62,7 +63,7 @@ export default function Pomodoro() {
         {Object.entries(MODES).map(([key, val]) => (
           <button
             key={key}
-            onClick={() => setMode(key)}
+            onClick={() => selectMode(key)}
             className={`px-5 py-2 rounded-xl font-bold transition-all ${
               mode === key
                 ? 'bg-red-600 text-white'

@@ -1,9 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useUser } from '@clerk/clerk-react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { fetchUserStats } from '../api/deadlineApi'
-
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001/api'
+import { fetchUserStats, BASE_URL } from '../api/deadlineApi'
 
 const SHAME_MESSAGES = [
   "Shame shame puppy shame! 🐶",
@@ -28,17 +26,24 @@ export default function Leaderboard() {
   const [shameIndex, setShameIndex] = useState(0)
 
   useEffect(() => {
-    if (user) {
-      Promise.all([
-        fetchUserStats(user.id, user.fullName, user.primaryEmailAddress?.emailAddress),
-        fetch(`${BASE_URL}/leaderboard/${user.id}`).then(r => r.json())
-      ]).then(([stats, board]) => {
+    if (!user?.id) return
+    let isMounted = true
+    Promise.all([
+      fetchUserStats(user.id, user.fullName, user.primaryEmailAddress?.emailAddress),
+      fetch(`${BASE_URL}/leaderboard/${user.id}`).then(r => r.json()).catch(() => [])
+    ]).then(([stats, board]) => {
+      if (isMounted) {
         setMyStats(stats)
         setLeaderboard(Array.isArray(board) ? board : [])
-        setLoading(false)
-      }).catch(() => setLoading(false))
+      }
+    }).catch(() => {})
+      .finally(() => {
+        if (isMounted) setLoading(false)
+      })
+    return () => {
+      isMounted = false
     }
-  }, [user])
+  }, [user?.id, user?.fullName, user?.primaryEmailAddress?.emailAddress])
 
   // Rotating shame messages
   useEffect(() => {

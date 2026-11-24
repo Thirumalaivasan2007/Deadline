@@ -1,9 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useUser } from '@clerk/clerk-react'
 import { motion } from 'framer-motion'
-import { fetchUserStats } from '../api/deadlineApi'
-
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001/api'
+import { fetchUserStats, BASE_URL } from '../api/deadlineApi'
 
 const THEMES = [
   {
@@ -67,22 +65,31 @@ export default function Settings() {
   })
 
   useEffect(() => {
-    if (user) {
+    let isMounted = true
+    if (user?.id) {
       fetchUserStats(user.id, user.fullName, user.primaryEmailAddress?.emailAddress)
         .then(data => {
-          setMyStats(data)
-          setProfile({
-            name: data.name || user.fullName || '',
-            college: data.college || '',
-            department: data.department || 'CSE',
-            semester: data.semester || '4',
-            rollNo: data.rollNo || ''
-          })
-          if (data.theme) setSelectedTheme(data.theme)
-          if (data.notifications) setNotifications(data.notifications)
+          if (isMounted && data) {
+            setMyStats(data)
+            setProfile({
+              name: data.name || user.fullName || '',
+              college: data.college || '',
+              department: data.department || 'CSE',
+              semester: data.semester || '4',
+              rollNo: data.rollNo || ''
+            })
+            if (data.theme) setSelectedTheme(data.theme)
+            if (data.notifications) setNotifications(data.notifications)
+          }
+        })
+        .catch(err => {
+          console.error('Failed to load user stats in settings:', err)
         })
     }
-  }, [user])
+    return () => {
+      isMounted = false
+    }
+  }, [user?.id, user?.fullName, user?.primaryEmailAddress?.emailAddress])
 
   const saveProfile = async () => {
     setSaving(true)

@@ -1,9 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useUser } from '@clerk/clerk-react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { fetchUserStats } from '../api/deadlineApi'
-
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001/api'
+import { fetchUserStats, BASE_URL } from '../api/deadlineApi'
 
 const SHOP_ITEMS = [
   {
@@ -38,20 +36,27 @@ export default function XPShop() {
   const [showFriendPicker, setShowFriendPicker] = useState(false)
 
   useEffect(() => {
-    if (user) {
-      Promise.all([
-        fetchUserStats(user.id, user.fullName),
-        fetch(`${BASE_URL}/leaderboard/${user.id}`).then(r => r.json())
-      ]).then(([stats, board]) => {
+    if (!user?.id) return
+    let isMounted = true
+    Promise.all([
+      fetchUserStats(user.id, user.fullName),
+      fetch(`${BASE_URL}/leaderboard/${user.id}`).then(r => r.json()).catch(() => [])
+    ]).then(([stats, board]) => {
+      if (isMounted) {
         setMyStats(stats)
         const friendList = Array.isArray(board)
           ? board.filter(u => u.userId !== user.id)
           : []
         setFriends(friendList)
-        setLoading(false)
-      }).catch(() => setLoading(false))
+      }
+    }).catch(() => {})
+      .finally(() => {
+        if (isMounted) setLoading(false)
+      })
+    return () => {
+      isMounted = false
     }
-  }, [user])
+  }, [user?.id, user?.fullName])
 
   const buyItem = async (item) => {
     if (!myStats || myStats.xp < item.cost) {

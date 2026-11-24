@@ -1,9 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useUser } from '@clerk/clerk-react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { fetchDeadlines } from '../api/deadlineApi'
-
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001/api'
+import { motion } from 'framer-motion'
+import { fetchDeadlines, BASE_URL } from '../api/deadlineApi'
 
 export default function StudyBuddy() {
   const { user } = useUser()
@@ -14,46 +12,49 @@ export default function StudyBuddy() {
   const [messages, setMessages] = useState([])
   const [newMessage, setNewMessage] = useState('')
   const [sending, setSending] = useState(false)
-  const [myStats, setMyStats] = useState(null)
   const [activeTab, setActiveTab] = useState('matches')
 
   useEffect(() => {
-    if (user) {
-      Promise.all([
-        fetchDeadlines(user.id),
-        fetch(`${BASE_URL}/user/${user.id}`).then(r => r.json())
-      ]).then(([deadlines, stats]) => {
-        const active = Array.isArray(deadlines)
-          ? deadlines.filter(d => new Date(d.dueDate) > Date.now())
-          : []
-        setMyDeadlines(active)
-        setMyStats(stats)
+    if (!user?.id) return
+    let isMounted = true
+    Promise.all([
+      fetchDeadlines(user.id),
+      fetch(`${BASE_URL}/user/${user.id}`).then(r => r.json()).catch(() => null)
+    ]).then(([deadlines]) => {
+      if (!isMounted) return
+      const active = Array.isArray(deadlines)
+        ? deadlines.filter(d => new Date(d.dueDate) > Date.now())
+        : []
+      setMyDeadlines(active)
 
-        // Find matches
-        if (active.length > 0) {
-          fetch(`${BASE_URL}/studybuddy/matches`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              userId: user.id,
-              subjects: active.map(d => d.subject),
-              deadlines: active.map(d => ({
-                subject: d.subject,
-                dueDate: d.dueDate
-              }))
-            })
-          }).then(r => r.json())
-            .then(data => {
+      // Find matches
+      if (active.length > 0) {
+        return fetch(`${BASE_URL}/studybuddy/matches`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: user.id,
+            subjects: active.map(d => d.subject),
+            deadlines: active.map(d => ({
+              subject: d.subject,
+              dueDate: d.dueDate
+            }))
+          })
+        }).then(r => r.json())
+          .then(data => {
+            if (isMounted) {
               setMatches(Array.isArray(data) ? data : [])
-              setLoading(false)
-            })
-            .catch(() => setLoading(false))
-        } else {
-          setLoading(false)
-        }
-      }).catch(() => setLoading(false))
+            }
+          })
+      }
+    }).catch(() => {})
+      .finally(() => {
+        if (isMounted) setLoading(false)
+      })
+    return () => {
+      isMounted = false
     }
-  }, [user])
+  }, [user?.id])
 
   const loadMessages = async (matchUserId) => {
     try {
